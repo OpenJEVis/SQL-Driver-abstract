@@ -182,10 +182,10 @@ public abstract class SQLDriverAbstract implements DataSource {
     }
 
     @Override
-    public void initialize(JEVisObject mssqlObject) {
-        _dataSource = mssqlObject;
-        initializeAttributes(mssqlObject);
-        initializeChannelObjects(mssqlObject);
+    public void initialize(JEVisObject sqlObject) {
+        _dataSource = sqlObject;
+        initializeAttributes(sqlObject);
+        initializeChannelObjects(sqlObject);
 
         _importer = ImporterFactory.getImporter(_dataSource);
         if (_importer != null) {
@@ -290,50 +290,50 @@ public abstract class SQLDriverAbstract implements DataSource {
         return null;
     }
 
-    private void initializeAttributes(JEVisObject mssqlObject) {
+    private void initializeAttributes(JEVisObject sqlObject) {
         try {
-            JEVisClass mssqlType = mssqlObject.getDataSource().getJEVisClass(getClassName());
-            JEVisType host = mssqlType.getType(SQL.HOST);
-            JEVisType port = mssqlType.getType(SQL.PORT);
-            JEVisType schema = mssqlType.getType(SQL.SCHEMA);
-            JEVisType user = mssqlType.getType(SQL.USER);
-            JEVisType password = mssqlType.getType(SQL.PASSWORD);
-            JEVisType connectionTimeout = mssqlType.getType(SQL.CONNECTION_TIMEOUT);
-            JEVisType readTimeout = mssqlType.getType(SQL.READ_TIMEOUT);
-            JEVisType timezoneType = mssqlType.getType(SQL.TIMEZONE);
-            JEVisType enableType = mssqlType.getType(SQL.ENABLE);
+            JEVisClass sqlType = sqlObject.getDataSource().getJEVisClass(getClassName());
+            JEVisType host = sqlType.getType(SQL.HOST);
+            JEVisType port = sqlType.getType(SQL.PORT);
+            JEVisType schema = sqlType.getType(SQL.SCHEMA);
+            JEVisType user = sqlType.getType(SQL.USER);
+            JEVisType password = sqlType.getType(SQL.PASSWORD);
+            JEVisType connectionTimeout = sqlType.getType(SQL.CONNECTION_TIMEOUT);
+            JEVisType readTimeout = sqlType.getType(SQL.READ_TIMEOUT);
+            JEVisType timezoneType = sqlType.getType(SQL.TIMEZONE);
+            JEVisType enableType = sqlType.getType(SQL.ENABLE);
 
-            _id = mssqlObject.getID();
-            _name = mssqlObject.getName();
-            _host = DatabaseHelper.getObjectAsString(mssqlObject, host);
-            _port = DatabaseHelper.getObjectAsInteger(mssqlObject, port);
-            _schema = DatabaseHelper.getObjectAsString(mssqlObject, schema);
-            JEVisAttribute userAttr = mssqlObject.getAttribute(user);
+            _id = sqlObject.getID();
+            _name = sqlObject.getName();
+            _host = DatabaseHelper.getObjectAsString(sqlObject, host);
+            _port = DatabaseHelper.getObjectAsInteger(sqlObject, port);
+            _schema = DatabaseHelper.getObjectAsString(sqlObject, schema);
+            JEVisAttribute userAttr = sqlObject.getAttribute(user);
             if (!userAttr.hasSample()) {
                 _dbUser = "";
             } else {
                 _dbUser = (String) userAttr.getLatestSample().getValue();
             }
-            JEVisAttribute passAttr = mssqlObject.getAttribute(password);
+            JEVisAttribute passAttr = sqlObject.getAttribute(password);
             if (!passAttr.hasSample()) {
                 _dbPW = "";
             } else {
                 _dbPW = (String) passAttr.getLatestSample().getValue();
             }
             
-            _connectionTimeout = DatabaseHelper.getObjectAsInteger(mssqlObject, connectionTimeout);
-            _readTimeout = DatabaseHelper.getObjectAsInteger(mssqlObject, readTimeout);
-            _timezone = DatabaseHelper.getObjectAsString(mssqlObject, timezoneType);
-            _enabled = DatabaseHelper.getObjectAsBoolean(mssqlObject, enableType);
+            _connectionTimeout = DatabaseHelper.getObjectAsInteger(sqlObject, connectionTimeout);
+            _readTimeout = DatabaseHelper.getObjectAsInteger(sqlObject, readTimeout);
+            _timezone = DatabaseHelper.getObjectAsString(sqlObject, timezoneType);
+            _enabled = DatabaseHelper.getObjectAsBoolean(sqlObject, enableType);
         } catch (JEVisException ex) {
             Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.ERROR, null, ex);
         }
     }
 
-    private void initializeChannelObjects(JEVisObject mssqlObject) {
+    private void initializeChannelObjects(JEVisObject sqlObject) {
         try {
-            JEVisClass channelClass = mssqlObject.getDataSource().getJEVisClass(SQLChannel.NAME);
-            _channels = mssqlObject.getChildren(channelClass, false);
+            JEVisClass channelClass = sqlObject.getDataSource().getJEVisClass(SQLChannel.NAME);
+            _channels = sqlObject.getChildren(channelClass, false);
         } catch (JEVisException ex) {
             java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
