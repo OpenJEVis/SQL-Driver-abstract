@@ -82,7 +82,7 @@ public abstract class SQLDriverAbstract implements DataSource {
 
         public final static String NAME = "SQL Channel";
         public final static String TABLE = "Table";
-        public final static String COL_ID = "Column ID";
+        public final static String COL_ID = "Column ID"; // optional
         public final static String COL_TS = "Column Timestamp";
         public final static String COL_TS_FORMAT = "Timestamp Format";
         public final static String COL_VALUE = "Column Value";
@@ -230,7 +230,8 @@ public abstract class SQLDriverAbstract implements DataSource {
             String sql_query = String.format("select %s, %s, %s", col_id, col_ts, col_value);
             sql_query += " from " + table;
             sql_query += String.format(" where %s > '%s'", col_ts, sql_lastReadout);
-            sql_query += " and " + col_id + " =?";
+            if (!col_id.isEmpty())
+                sql_query += " and " + col_id + " =?";
             sql_query += ";";
             PreparedStatement ps = _con.prepareStatement(sql_query);
             
@@ -257,7 +258,8 @@ public abstract class SQLDriverAbstract implements DataSource {
                 Long target = DatabaseHelper.getObjectAsLong(dp, targetType);
                 
                 // Querry for ID given by the datapoint
-                ps.setString(1, id);
+                if (!col_id.isEmpty())
+                    ps.setString(1, id);
                 ResultSet rs = ps.executeQuery();
                 
                 try {
