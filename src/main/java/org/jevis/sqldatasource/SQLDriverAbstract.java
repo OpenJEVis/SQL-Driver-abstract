@@ -20,7 +20,6 @@ package org.jevis.sqldatasource;
 
 import java.io.InputStream;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -129,6 +128,11 @@ public abstract class SQLDriverAbstract implements DataSource {
     
     /**
      * Load appropriate jdbc driver and set protected SQL-connection _con
+     * @param host Hostname or IP of the SQL-database to connect to
+     * @param port the used TCP-port
+     * @param schema Database/Schema name
+     * @param dbUser User used to connect to the SQL-database
+     * @param dbPW Password of the user
      * @return URL used to connect to the database, for debugging
      * @throws ClassNotFoundException
      * @throws SQLException 
@@ -137,6 +141,10 @@ public abstract class SQLDriverAbstract implements DataSource {
             String dbUser, String dbPW)
             throws ClassNotFoundException, SQLException;
     
+    /**
+     * Get the name used for this driver, for example 'SQL Server'.
+     * @return Name of the class used in JEVis
+     */
     abstract protected String getClassName();
     
     @Override
