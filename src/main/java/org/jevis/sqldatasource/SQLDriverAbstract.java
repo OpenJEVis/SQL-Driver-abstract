@@ -217,10 +217,12 @@ public abstract class SQLDriverAbstract implements DataSource {
             String col_value = DatabaseHelper.getObjectAsString(channel, valueType);
             JEVisType readoutType = channelClass.getType(SQLChannel.LAST_READOUT);
             // TODO: this pattern should be in JECommons
-            DateTime lastReadout;
+            DateTime lastReadout = null;
             if (channel.getAttribute(readoutType).hasSample()) {
                 lastReadout = DatabaseHelper.getObjectAsDate(channel, readoutType, DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss"));
-            } else {
+            }
+            // Either there is no sample or there was a sample and it is empty
+            if (lastReadout == null || DatabaseHelper.getObjectAsString(channel, readoutType).isEmpty()) {
                 lastReadout = new DateTime(0);
             }
             
