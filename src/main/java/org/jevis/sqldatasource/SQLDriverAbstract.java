@@ -245,18 +245,21 @@ public abstract class SQLDriverAbstract implements DataSource {
             
             System.out.println("SQL-Driver: Prepared querry: " + sql_query);
             
-            List<JEVisObject> _dataPoints;
+            List<JEVisObject> dataPoints;
             try {
-                // Get all datapoints under the current channel
-                JEVisClass dpClass = channel.getDataSource().getJEVisClass(SQLDataPoint.NAME);
-                _dataPoints = channel.getChildren(dpClass, true);
+                // Recursively get all datapoints under the current channel
+                dataPoints = getDataPoints(channel);
+                System.out.println("Found DataPoints:");
+                for(JEVisObject dp : dataPoints) {
+                    System.out.println(dp.getName());
+                }
                 
             } catch (JEVisException ex) {
                 java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
                 return null;
             }
             // Create query for each datapoint
-            for (JEVisObject dp : _dataPoints) {
+            for (JEVisObject dp : dataPoints) {
                 JEVisClass dpClass = dp.getJEVisClass();
 
                 JEVisType idType = dpClass.getType(SQLDataPoint.ID);
@@ -342,7 +345,7 @@ public abstract class SQLDriverAbstract implements DataSource {
 
     private void initializeChannelObjects(JEVisObject sqlObject) {
         try {
-            _channels = recursiveInitializeChannelObjects(sqlObject);
+            _channels = getChannels(sqlObject);
             System.out.println("Found Channels:");
             for(JEVisObject channel : _channels) {
                 System.out.println(channel.getName());
@@ -351,8 +354,11 @@ public abstract class SQLDriverAbstract implements DataSource {
             java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
     }
-    private List<JEVisObject> recursiveInitializeChannelObjects(JEVisObject channelDirObject) throws JEVisException {
+    private List<JEVisObject> getChannels(JEVisObject channelDirObject) throws JEVisException {
         ArrayList<JEVisObject> channels = new ArrayList<>();
+        
+        System.out.println("ChannelDir: " + channelDirObject.getName());
+
         // Get Classes
         JEVisClass channelDirClass = channelDirObject.getDataSource().getJEVisClass(SQLChannelDirectory.NAME);
         JEVisClass channelClass = channelDirObject.getDataSource().getJEVisClass(SQLChannel.NAME);
@@ -360,13 +366,34 @@ public abstract class SQLDriverAbstract implements DataSource {
         // Go deeper
         List<JEVisObject> channelsDirs = channelDirObject.getChildren(channelDirClass, false);
         for (JEVisObject cDir : channelsDirs) {
-            channels.addAll(recursiveInitializeChannelObjects(cDir));
+            channels.addAll(getChannels(cDir));
         }
         
         // Add all channels
         channels.addAll(channelDirObject.getChildren(channelClass, false));
         
         return channels;
+    }
+    
+    private List<JEVisObject> getDataPoints(JEVisObject channelObject) throws JEVisException {
+        ArrayList<JEVisObject> dataPoints = new ArrayList<>();
+        
+        System.out.println("DataPointDir: " + channelObject.getName());
+
+        // Get Classes
+        JEVisClass dpDirClass = channelObject.getDataSource().getJEVisClass(SQLDataPointDirectory.NAME);
+        JEVisClass dpClass = channelObject.getDataSource().getJEVisClass(SQLDataPoint.NAME);
+        
+        // Go deeper
+        List<JEVisObject> dpDirs = channelObject.getChildren(dpDirClass, false);
+        for (JEVisObject dpDir : dpDirs) {
+            dataPoints.addAll(getDataPoints(dpDir));
+        }
+        
+        // Add all Data Points
+        dataPoints.addAll(channelObject.getChildren(dpClass, false));
+        
+        return dataPoints;
     }
 
 }
