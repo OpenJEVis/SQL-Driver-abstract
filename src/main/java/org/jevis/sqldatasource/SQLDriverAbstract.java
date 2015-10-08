@@ -334,11 +334,27 @@ public abstract class SQLDriverAbstract implements DataSource {
 
     private void initializeChannelObjects(JEVisObject sqlObject) {
         try {
-            JEVisClass channelClass = sqlObject.getDataSource().getJEVisClass(SQLChannel.NAME);
-            _channels = sqlObject.getChildren(channelClass, false);
+            _channels = recursiveInitializeChannelObjects(sqlObject);
         } catch (JEVisException ex) {
             java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
+    }
+    private List<JEVisObject> recursiveInitializeChannelObjects(JEVisObject channelDirObject) throws JEVisException {
+        ArrayList<JEVisObject> channels = new ArrayList<>();
+        // Get Classes
+        JEVisClass channelDirClass = channelDirObject.getDataSource().getJEVisClass(SQLChannelDirectory.NAME);
+        JEVisClass channelClass = channelDirObject.getDataSource().getJEVisClass(SQLChannel.NAME);
+        
+        // Go deeper
+        List<JEVisObject> channelsDirs = channelDirObject.getChildren(channelDirClass, false);
+        for (JEVisObject cDir : channelsDirs) {
+            channels.addAll(recursiveInitializeChannelObjects(cDir));
+        }
+        
+        // Add all channels
+        channels.addAll(channelDirObject.getChildren(channelClass, false));
+        
+        return channels;
     }
 
 }
