@@ -210,6 +210,8 @@ public abstract class SQLDriverAbstract implements DataSource {
             JEVisType valueType = channelClass.getType(SQLChannel.COL_VALUE);
             String table = DatabaseHelper.getObjectAsString(channel, tableType);
             String col_id = DatabaseHelper.getObjectAsString(channel, col_idType);
+            if (col_id == null)
+                col_id = "";
             String col_ts = DatabaseHelper.getObjectAsString(channel, col_tsType);
             String col_ts_format = DatabaseHelper.getObjectAsString(channel, col_tsFormatType);
             String col_value = DatabaseHelper.getObjectAsString(channel, valueType);
@@ -227,7 +229,13 @@ public abstract class SQLDriverAbstract implements DataSource {
             sql_lastReadout = lastReadout.toString(DateTimeFormat.forPattern(col_ts_format));
             
             // Prepare SQL-Statement
-            String sql_query = String.format("select %s, %s, %s", col_id, col_ts, col_value);
+            // only include column if it is defined
+            String col_id_sql_str = "";
+            if (!col_id.isEmpty())
+                col_id_sql_str = col_id + ',';
+                
+            String sql_query = String.format("select %s %s, %s",
+                    col_id_sql_str, col_ts, col_value);
             sql_query += " from " + table;
             sql_query += String.format(" where %s > '%s'", col_ts, sql_lastReadout);
             if (!col_id.isEmpty())
@@ -335,6 +343,10 @@ public abstract class SQLDriverAbstract implements DataSource {
     private void initializeChannelObjects(JEVisObject sqlObject) {
         try {
             _channels = recursiveInitializeChannelObjects(sqlObject);
+            System.out.println("Found Channels:");
+            for(JEVisObject channel : _channels) {
+                System.out.println(channel.getName());
+            }
         } catch (JEVisException ex) {
             java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
