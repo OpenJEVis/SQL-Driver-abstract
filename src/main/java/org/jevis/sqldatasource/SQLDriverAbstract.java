@@ -252,7 +252,7 @@ public abstract class SQLDriverAbstract implements DataSource {
                 JEVisClass dpClass = dp.getJEVisClass();
 
                 JEVisType idType = dpClass.getType(SQLDataPoint.ID);
-                JEVisType targetType = dpClass.getType(DataCollectorTypes.DataPoint.CSVDataPoint.TARGET);
+                JEVisType targetType = dpClass.getType(SQLDataPoint.TARGET);
                 
                 String id = DatabaseHelper.getObjectAsString(dp, idType);
                 Long target = DatabaseHelper.getObjectAsLong(dp, targetType);
