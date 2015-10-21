@@ -167,6 +167,7 @@ public abstract class SQLDriverAbstract implements DataSource {
                 // Import Results
                 if (!_result.isEmpty()) {
                     this.importResult();
+                    System.out.println("Setting lastReadout to: " + _importer.getLatestDatapoint().toString());
                     DataSourceHelper.setLastReadout(channel, _importer.getLatestDatapoint());
                 }
             } catch (Exception ex) {
