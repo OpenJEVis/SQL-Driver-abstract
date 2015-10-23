@@ -67,6 +67,7 @@ public abstract class SQLDriverAbstract implements DataSource {
 
         public final static String NAME = "SQL Server";
         public final static String SCHEMA = "Schema";
+        public final static String DOMAIN = "Domain";
         public final static String USER = "User";
         public final static String PASSWORD = "Password";
     }
@@ -107,6 +108,7 @@ public abstract class SQLDriverAbstract implements DataSource {
     private String _name;
     private String _host;
     private Integer _port;
+    private String _domain;
     private String _schema;
     private String _dbUser;
     private String _dbPW;
@@ -131,6 +133,7 @@ public abstract class SQLDriverAbstract implements DataSource {
      * @param host Hostname or IP of the SQL-database to connect to
      * @param port the used TCP-port
      * @param schema Database/Schema name
+     * @param domain (optional) Windows-domain using windows authentication
      * @param dbUser User used to connect to the SQL-database
      * @param dbPW Password of the user
      * @return URL used to connect to the database, for debugging
@@ -138,7 +141,7 @@ public abstract class SQLDriverAbstract implements DataSource {
      * @throws SQLException 
      */
     abstract protected String loadJDBC(String host, int port, String schema,
-            String dbUser, String dbPW)
+            String domain, String dbUser, String dbPW)
             throws ClassNotFoundException, SQLException;
     
     /**
@@ -150,7 +153,7 @@ public abstract class SQLDriverAbstract implements DataSource {
     @Override
     public void run() {
         try {
-            String url = loadJDBC(_host, _port, _schema, _dbUser, _dbPW);
+            String url = loadJDBC(_host, _port, _schema, _domain, _dbUser, _dbPW);
             
         } catch (ClassNotFoundException | SQLException ex) {
             java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
@@ -312,6 +315,7 @@ public abstract class SQLDriverAbstract implements DataSource {
             JEVisType host = sqlType.getType(SQL.HOST);
             JEVisType port = sqlType.getType(SQL.PORT);
             JEVisType schema = sqlType.getType(SQL.SCHEMA);
+            JEVisType domain = sqlType.getType(SQL.DOMAIN);
             JEVisType user = sqlType.getType(SQL.USER);
             JEVisType password = sqlType.getType(SQL.PASSWORD);
             JEVisType connectionTimeout = sqlType.getType(SQL.CONNECTION_TIMEOUT);
@@ -324,6 +328,12 @@ public abstract class SQLDriverAbstract implements DataSource {
             _host = DatabaseHelper.getObjectAsString(sqlObject, host);
             _port = DatabaseHelper.getObjectAsInteger(sqlObject, port);
             _schema = DatabaseHelper.getObjectAsString(sqlObject, schema);
+            JEVisAttribute domainAttr = sqlObject.getAttribute(domain);
+            if (!domainAttr.hasSample()) {
+                _domain = "";
+            } else {
+                _domain = (String) domainAttr.getLatestSample().getValue();
+            }
             JEVisAttribute userAttr = sqlObject.getAttribute(user);
             if (!userAttr.hasSample()) {
                 _dbUser = "";
