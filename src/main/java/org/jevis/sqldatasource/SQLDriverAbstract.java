@@ -40,6 +40,7 @@ import org.jevis.commons.driver.DataCollectorTypes;
 import org.jevis.commons.driver.Result;
 import org.jevis.commons.driver.DataSource;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
@@ -289,8 +290,9 @@ public abstract class SQLDriverAbstract implements DataSource {
                         
                         // Parse value and timestamp
                         double value = Double.parseDouble(val_str);
-                        DateTime dateTime = dbDateTimeFormatter.parseDateTime(ts_str);
+                        DateTime dateTime = dbDateTimeFormatter.withZone(DateTimeZone.UTC).parseDateTime(ts_str);
                         
+
                         // add to results
                         _result.add(new Result(target, value, dateTime));
                     }
