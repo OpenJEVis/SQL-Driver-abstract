@@ -166,8 +166,9 @@ public abstract class SQLDriverAbstract implements DataSource {
 
                 // Import Results
                 if (!_result.isEmpty()) {
-                    this.importResult();   
-                    Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, "Setting lastReadout to: " + _importer.getLatestDatapoint().toString());
+                    this.importResult();  
+                    String msg = "Setting lastReadout to: " + _importer.getLatestDatapoint().toString();
+                    Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
                     DataSourceHelper.setLastReadout(channel, _importer.getLatestDatapoint());
                 }
             } catch (Exception ex) {
@@ -245,8 +246,8 @@ public abstract class SQLDriverAbstract implements DataSource {
                 sql_query += " and " + col_id + " =?";
             sql_query += ";";
             PreparedStatement ps = _con.prepareStatement(sql_query);
-            
-            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, "SQL-Driver: Prepared querry: " + sql_query);
+            String msg = "SQL-Driver: Prepared querry: " + sql_query;
+            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
             
             List<JEVisObject> dataPoints;
             try {
@@ -258,7 +259,7 @@ public abstract class SQLDriverAbstract implements DataSource {
                 }
                 
             } catch (JEVisException ex) {
-                java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+                Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.SEVERE, null, ex);
                 return null;
             }
             // Create query for each datapoint
@@ -281,7 +282,8 @@ public abstract class SQLDriverAbstract implements DataSource {
                     while (rs.next()) {
                         String ts_str = rs.getString(col_ts);
                         String val_str = rs.getString(col_value);
-                        Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, String.format("SQL-Driver: SQL-COL: %s, %s, %s", id, ts_str, val_str));    
+                        msg = String.format("SQL-Driver: SQL-COL: %s, %s, %s", id, ts_str, val_str);
+                        Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);    
                         
                         // Parse value and timestamp
                         double value = Double.parseDouble(val_str);
@@ -358,7 +360,8 @@ public abstract class SQLDriverAbstract implements DataSource {
     }
     private List<JEVisObject> getChannels(JEVisObject channelDirObject) throws JEVisException {
         ArrayList<JEVisObject> channels = new ArrayList<>();
-        Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, "ChannelDir: " + channelDirObject.getName());
+        String msg = "ChannelDir: " + channelDirObject.getName();
+        Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
 
         // Get Classes
         JEVisClass channelDirClass = channelDirObject.getDataSource().getJEVisClass(SQLChannelDirectory.NAME);
@@ -379,7 +382,8 @@ public abstract class SQLDriverAbstract implements DataSource {
     private List<JEVisObject> getDataPoints(JEVisObject channelObject) throws JEVisException {
         ArrayList<JEVisObject> dataPoints = new ArrayList<>();
         
-        Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, "DataPointDir: " + channelObject.getName());
+        String msg = "DataPointDir: " + channelObject.getName();
+        Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
 
         // Get Classes
         JEVisClass dpDirClass = channelObject.getDataSource().getJEVisClass(SQLDataPointDirectory.NAME);
