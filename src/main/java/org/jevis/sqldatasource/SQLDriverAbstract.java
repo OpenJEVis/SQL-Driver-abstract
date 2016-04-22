@@ -1,13 +1,14 @@
 /**
- * Copyright (C) 2015 NeroBurner
+ * Copyright (C) 2015 NeroBurner; Copyright (C) 2016 JingxuanMan
  *
  * This program is free software: you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software
  * Foundation in version 3.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
- * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+ * details.
  *
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <http://www.gnu.org/licenses/>.
@@ -15,62 +16,75 @@
  * This driver is part of the OpenJEVis project, further project information are
  * published at <http://www.OpenJEVis.org/>.
  */
-
 package org.jevis.sqldatasource;
 
 import java.io.InputStream;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.jevis.api.JEVisAttribute;
 import org.jevis.api.JEVisClass;
 import org.jevis.api.JEVisException;
 import org.jevis.api.JEVisObject;
 import org.jevis.api.JEVisType;
 import org.jevis.commons.DatabaseHelper;
-import org.jevis.commons.driver.DataSourceHelper;
+import org.jevis.commons.driver.DataCollectorTypes;
+import org.jevis.commons.driver.DataSource;
 import org.jevis.commons.driver.Importer;
 import org.jevis.commons.driver.ImporterFactory;
-import org.jevis.commons.driver.DataCollectorTypes;
 import org.jevis.commons.driver.Result;
-import org.jevis.commons.driver.DataSource;
+import org.jevis.sqldatasource.error.SQLDriverError;
+import org.jevis.sqldatasource.error.SQLDriverErrors;
 import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
-
-
 /**
- * This is an abstract driver to connect to a SQL Database.
- * 
- * The structure in JEVis for a single data point must be at least:
- * SQL Server
- * - SQL Channel Directory
- *   - Data Point Directory (Optional)
- *     - Data Point
- * 
- * @author NeroBurner
+ *
+ * @author NeroBurner (AIT)
+ * @author JingxuanMan (Envidatec)
+ */
+/**
+ * This is an abstract driver to connect to a SQLServer Database. The structure
+ * in JEVis for a single data point must be at least: SQL Server - SQL Channel
+ * Directory - SQL Channel - Data Point Directory - Data Point. Besides you
+ * could add SQL Variable Directory and SQL Variable
  */
 public abstract class SQLDriverAbstract implements DataSource {
-    interface SQL extends DataCollectorTypes.DataSource.DataServer {
-        // from parent-class
-        //public final static String NAME = "Data Server";
-        //public final static String CONNECTION_TIMEOUT = "Connection Timeout";
-        //public final static String READ_TIMEOUT = "Read Timeout";
-        //public final static String HOST = "Host";
-        //public final static String PORT = "Port";
+
+    private String _name;
+    private String _host;
+    private Integer _port;
+    private String _schema;
+    private String _dbUser;
+    private String _dbPW;
+    private Integer _connectionTimeout;
+    private Integer _readTimeout;
+    private String _timezone;
+    private Boolean _enabled;
+    private String _domain;
+
+    protected Connection _con;
+    private JEVisObject _dataSource;
+    private List<JEVisObject> _channels;
+    private List<Result> _result;
+    private Importer _importer;
+
+    interface SQLServer extends DataCollectorTypes.DataSource.DataServer {
 
         public final static String NAME = "SQL Server";
-        public final static String SCHEMA = "Schema";
-        public final static String DOMAIN = "Domain";
-        public final static String USER = "User";
         public final static String PASSWORD = "Password";
+        public final static String SCHEMA = "Schema";
+        public final static String USER = "User";
+        public final static String DOMAIN = "Domain";
     }
 
     interface SQLChannelDirectory extends DataCollectorTypes.ChannelDirectory {
@@ -79,16 +93,10 @@ public abstract class SQLDriverAbstract implements DataSource {
     }
 
     interface SQLChannel extends DataCollectorTypes.Channel {
-        // from parent
-        // public final static String LAST_READOUT = "Last Readout";
 
         public final static String NAME = "SQL Channel";
-        public final static String TABLE = "Table";
-        public final static String COL_ID = "Column ID"; // optional
-        public final static String COL_TS = "Column Timestamp";
-        public final static String COL_TS_FORMAT = "Timestamp Format";
-        public final static String COL_VALUE = "Column Value";
-
+        public final static String LAST_READOUT = "Last Readout";
+        public final static String QUERY = "Query";
     }
 
     interface SQLDataPointDirectory extends DataCollectorTypes.DataPointDirectory {
@@ -99,84 +107,143 @@ public abstract class SQLDriverAbstract implements DataSource {
     interface SQLDataPoint extends DataCollectorTypes.DataPoint {
 
         public final static String NAME = "SQL Data Point";
-        public final static String ID = "ID";
-        public final static String TARGET = "Target";
+        public final static String TARGET = "Target ID";
+        public final static String TARGETATTRIBUTE = "Target Attribute";
+        public final static String TIMESTAMPCOLUMN = "Timestamp Column";
+        public final static String TIMESTAMPTYPE = "Timestamp Type";
+        public final static String VALUETYPE = "Value Type";
+        public final static String VALUECOLUMN = "Value Column";
     }
-    
-    
-    // Attributes
-    private Long _id;
-    private String _name;
-    private String _host;
-    private Integer _port;
-    private String _domain;
-    private String _schema;
-    private String _dbUser;
-    private String _dbPW;
-    private Integer _connectionTimeout;
-    private Integer _readTimeout;
-    private String _timezone;
-    private Boolean _enabled;
 
-    // Global Variables
-    private Importer _importer;
-    private List<JEVisObject> _channels;
-    private List<Result> _result;
+    interface SQLVariableDirectory extends DataCollectorTypes.SQLVariableDirectory {
 
-    private JEVisObject _dataSource;
-    protected Connection _con;
+        public final static String NAME = "SQL Variable Directory";
+    }
+
+    interface SQLVariable extends DataCollectorTypes.SQLVariable {
+
+        public final static String NAME = "SQL Variable";
+        public final static String VARIABLETYPE = "Variable Type";
+        public final static String POSITION = "Position";
+        public final static String CONDITION = "Condition";
+    }
+
+    private void initializeAttributes(JEVisObject sqlObject) {
+        try {
+            JEVisClass sqlType = sqlObject.getDataSource().getJEVisClass(getClassName());
+            JEVisType host = sqlType.getType(SQLServer.HOST);
+            JEVisType port = sqlType.getType(SQLServer.PORT);
+            JEVisType schema = sqlType.getType(SQLServer.SCHEMA);
+            JEVisType user = sqlType.getType(SQLServer.USER);
+            JEVisType password = sqlType.getType(SQLServer.PASSWORD);
+            JEVisType connectionTimeout = sqlType.getType(SQLServer.CONNECTION_TIMEOUT);
+            JEVisType readTimeout = sqlType.getType(SQLServer.READ_TIMEOUT);
+            JEVisType timezoneType = sqlType.getType(SQLServer.TIMEZONE);
+            JEVisType enableType = sqlType.getType(SQLServer.ENABLE);
+            _name = sqlObject.getName();
+            _host = DatabaseHelper.getObjectAsString(sqlObject, host);
+            _port = DatabaseHelper.getObjectAsInteger(sqlObject, port);
+            _schema = DatabaseHelper.getObjectAsString(sqlObject, schema);
+            JEVisAttribute userAttr = sqlObject.getAttribute(user);
+            if (!userAttr.hasSample()) {
+                _dbUser = "";
+            } else {
+                _dbUser = (String) userAttr.getLatestSample().getValue();
+            }
+            JEVisAttribute passAttr = sqlObject.getAttribute(password);
+            if (!passAttr.hasSample()) {
+                _dbPW = "";
+            } else {
+                _dbPW = (String) passAttr.getLatestSample().getValue();
+            }
+            _connectionTimeout = DatabaseHelper.getObjectAsInteger(sqlObject, connectionTimeout);
+            _readTimeout = DatabaseHelper.getObjectAsInteger(sqlObject, readTimeout);
+            _timezone = DatabaseHelper.getObjectAsString(sqlObject, timezoneType);
+            _enabled = DatabaseHelper.getObjectAsBoolean(sqlObject, enableType);
+        } catch (JEVisException ex) {
+            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void initializeChannelObjects(JEVisObject sqlObject) {
+        try {
+            _channels = getChannels(sqlObject);
+            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, "Found Channels:");
+            for (JEVisObject channel : _channels) {
+                Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, channel.getName());
+            }
+        } catch (JEVisException ex) {
+            java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+    }
+
+    private List<JEVisObject> getChannels(JEVisObject channelDirObject) throws JEVisException {
+        ArrayList<JEVisObject> channels = new ArrayList<>();
+        String msg = "ChannelDir: " + channelDirObject.getName();
+        Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
+        JEVisClass channelDirClass = channelDirObject.getDataSource().getJEVisClass(SQLChannelDirectory.NAME);
+        JEVisClass channelClass = channelDirObject.getDataSource().getJEVisClass(SQLChannel.NAME);
+        List<JEVisObject> channelsDirs = channelDirObject.getChildren(channelDirClass, false);
+        for (JEVisObject cDir : channelsDirs) {
+            channels.addAll(getChannels(cDir));
+        }
+        channels.addAll(channelDirObject.getChildren(channelClass, false));
+        return channels;
+    }
+
+    private List<JEVisObject> getDataPoints(JEVisObject channelObject) throws JEVisException {
+        ArrayList<JEVisObject> dataPoints = new ArrayList<>();
+        String msg = "DataPointDir: " + channelObject.getName();
+        Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
+        JEVisClass dpDirClass = channelObject.getDataSource().getJEVisClass(SQLDataPointDirectory.NAME);
+        JEVisClass dpClass = channelObject.getDataSource().getJEVisClass(SQLDataPoint.NAME);
+        List<JEVisObject> dpDirs = channelObject.getChildren(dpDirClass, false);
+        for (JEVisObject dpDir : dpDirs) {
+            dataPoints.addAll(getDataPoints(dpDir));
+        }
+        dataPoints.addAll(channelObject.getChildren(dpClass, false));
+        return dataPoints;
+    }
+
+    private List<JEVisObject> getVariables(JEVisObject channelObject) throws JEVisException {
+        ArrayList<JEVisObject> variables = new ArrayList<>();
+        String msg = "VariableDir: " + channelObject.getName();
+        Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
+        JEVisClass vaDirClass = channelObject.getDataSource().getJEVisClass(SQLVariableDirectory.NAME);
+        JEVisClass valass = channelObject.getDataSource().getJEVisClass(SQLVariable.NAME);
+        List<JEVisObject> vaDirs = channelObject.getChildren(vaDirClass, false);
+        for (JEVisObject vaDir : vaDirs) {
+            variables.addAll(getVariables(vaDir));
+        }
+        variables.addAll(channelObject.getChildren(valass, false));
+        return variables;
+    }
 
     @Override
-    public void parse(List<InputStream> input) {}
-    
-    /**
-     * Load appropriate jdbc driver and set protected SQL-connection _con
-     * @param host Hostname or IP of the SQL-database to connect to
-     * @param port the used TCP-port
-     * @param schema Database/Schema name
-     * @param domain (optional) Windows-domain using windows authentication
-     * @param dbUser User used to connect to the SQL-database
-     * @param dbPW Password of the user
-     * @return URL used to connect to the database, for debugging
-     * @throws ClassNotFoundException
-     * @throws SQLException 
-     */
-    abstract protected String loadJDBC(String host, int port, String schema,
-            String domain, String dbUser, String dbPW)
-            throws ClassNotFoundException, SQLException;
-    
-    /**
-     * Get the name used for this driver, for example 'SQL Server'.
-     * @return Name of the class used in JEVis
-     */
+    public void parse(List<InputStream> input) {
+    }
+
+//    abstract protected String loadJDBC(String host, int port, String schema, String dbUser, String dbPW) throws ClassNotFoundException, SQLException;
+    abstract protected String loadJDBC(String host, int port, String schema, String dbUser, String dbPW, String domain) throws ClassNotFoundException, SQLException;
+
     abstract protected String getClassName();
-    
+
     @Override
     public void run() {
         try {
-            String url = loadJDBC(_host, _port, _schema, _domain, _dbUser, _dbPW);
-            
+            String url = loadJDBC(_host, _port, _schema, _dbUser, _dbPW, _domain);
         } catch (ClassNotFoundException | SQLException ex) {
             Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.SEVERE, null, ex);
             return;
         }
         for (JEVisObject channel : _channels) {
-
             try {
                 _result = new ArrayList<Result>();
-                
-                // Get samples from sql-database and parse into results
                 this.sendSampleRequest(channel);
-
-                // Import Results
                 if (!_result.isEmpty()) {
-                    this.importResult();  
-                    String msg = "Setting lastReadout to: " + _importer.getLatestDatapoint().toString();
-                    Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
-                    DataSourceHelper.setLastReadout(channel, _importer.getLatestDatapoint());
+                    this.importResult();
                 }
             } catch (Exception ex) {
-                //TODO: remove this generic exception-catching
                 Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
@@ -192,225 +259,246 @@ public abstract class SQLDriverAbstract implements DataSource {
         _dataSource = sqlObject;
         initializeAttributes(sqlObject);
         initializeChannelObjects(sqlObject);
-
         _importer = ImporterFactory.getImporter(_dataSource);
         if (_importer != null) {
             _importer.initialize(_dataSource);
         }
     }
 
-    /**
-     * Get samples from SQL-database and parse into results
-     *
-     * @param channel defines the table to query from
-     * @return
-     */
     @Override
     public List<InputStream> sendSampleRequest(JEVisObject channel) {
         try {
+//            //Debug workaround, remove
+//            if (channel.getID() != 4607) {
+//                return null;
+//            }
+            System.out.println("----------------------------------- Channnel: " + channel.getName() + " -----------------");
             JEVisClass channelClass = channel.getJEVisClass();
-            JEVisType tableType = channelClass.getType(SQLChannel.TABLE);
-            JEVisType col_idType = channelClass.getType(SQLChannel.COL_ID);
-            JEVisType col_tsType = channelClass.getType(SQLChannel.COL_TS);
-            JEVisType col_tsFormatType = channelClass.getType(SQLChannel.COL_TS_FORMAT);
-            JEVisType valueType = channelClass.getType(SQLChannel.COL_VALUE);
-            String table = DatabaseHelper.getObjectAsString(channel, tableType);
-            String col_id = DatabaseHelper.getObjectAsString(channel, col_idType);
-            if (col_id == null)
-                col_id = "";
-            String col_ts = DatabaseHelper.getObjectAsString(channel, col_tsType);
-            String col_ts_format = DatabaseHelper.getObjectAsString(channel, col_tsFormatType);
-            String col_value = DatabaseHelper.getObjectAsString(channel, valueType);
-            JEVisType readoutType = channelClass.getType(SQLChannel.LAST_READOUT);
-            // TODO: this pattern should be in JECommons
-            DateTime lastReadout = null;
-            if (channel.getAttribute(readoutType).hasSample()) {
-                lastReadout = DatabaseHelper.getObjectAsDate(channel, readoutType, DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss"));
-            }
-            // Either there is no sample or there was a sample and it is empty
-            if (lastReadout == null || DatabaseHelper.getObjectAsString(channel, readoutType).isEmpty()) {
-                lastReadout = new DateTime(0);
-            }
-            
-            String sql_lastReadout;
-            DateTimeFormatter dbDateTimeFormatter = DateTimeFormat.forPattern(col_ts_format);
-            sql_lastReadout = lastReadout.toString(DateTimeFormat.forPattern(col_ts_format));
-            
-            // Prepare SQL-Statement
-            // only include column if it is defined
-            String col_id_sql_str = "";
-            if (!col_id.isEmpty())
-                col_id_sql_str = col_id + ',';
-                
-            String sql_query = String.format("select %s %s, %s",
-                    col_id_sql_str, col_ts, col_value);
-            sql_query += " from " + table;
-            sql_query += String.format(" where %s > '%s'", col_ts, sql_lastReadout);
-            if (!col_id.isEmpty())
-                sql_query += " and " + col_id + " =?";
-            sql_query += ";";
-            PreparedStatement ps = _con.prepareStatement(sql_query);
-            String msg = "SQL-Driver: Prepared querry: " + sql_query;
-            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
-            
-            List<JEVisObject> dataPoints;
+            JEVisType last_readoutType = channelClass.getType(SQLChannel.LAST_READOUT);
+            JEVisType queryType = channelClass.getType(SQLChannel.QUERY);
+            String last_readout = DatabaseHelper.getObjectAsString(channel, last_readoutType);
+            String query = DatabaseHelper.getObjectAsString(channel, queryType);
+
+            List<JEVisObject> variables;
             try {
-                // Recursively get all datapoints under the current channel
-                dataPoints = getDataPoints(channel);
-                Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, "Found DataPoints:");
-                for(JEVisObject dp : dataPoints) {
-                    Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, dp.getName());
+                variables = getVariables(channel);
+                Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO,
+                        "Found Variables:");
+                for (JEVisObject va : variables) {
+                    Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO,
+                            va.getName());
                 }
-                
             } catch (JEVisException ex) {
                 Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.SEVERE, null, ex);
                 return null;
             }
-            // Create query for each datapoint
-            for (JEVisObject dp : dataPoints) {
-                JEVisClass dpClass = dp.getJEVisClass();
 
-                JEVisType idType = dpClass.getType(SQLDataPoint.ID);
-                JEVisType targetType = dpClass.getType(SQLDataPoint.TARGET);
-                
-                String id = DatabaseHelper.getObjectAsString(dp, idType);
-                Long target = DatabaseHelper.getObjectAsLong(dp, targetType);
-                
-                // Querry for ID given by the datapoint
-                if (!col_id.isEmpty())
-                    ps.setString(1, id);
-                ResultSet rs = ps.executeQuery();
-                
-                try {
-                    // Parse the results
-                    while (rs.next()) {
-                        String ts_str = rs.getString(col_ts);
-                        String val_str = rs.getString(col_value);
-                        msg = String.format("SQL-Driver: SQL-COL: %s, %s, %s", id, ts_str, val_str);
-                        Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);    
-                        
-                        // Parse value and timestamp
-                        double value = Double.parseDouble(val_str);
-                        DateTime dateTime = dbDateTimeFormatter.withZone(DateTimeZone.UTC).parseDateTime(ts_str);
-                        
+            List<JEVisObject> dataPoints;
+            try {
+                dataPoints = getDataPoints(channel);
+                Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO,
+                        "Found DataPoints:");
+                for (JEVisObject dp : dataPoints) {
+                    Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO,
+                            dp.getName());
+                }
+            } catch (JEVisException ex) {
+                Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.SEVERE, null, ex);
+                return null;
+            }
 
-                        // add to results
-                        _result.add(new Result(target, value, dateTime));
+            String msg = "SQL-Driver: Prepared querry: " + query;
+            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
+            PreparedStatement ps = _con.prepareStatement(query);
+
+            //Set Valiables in query
+            System.out.println("Valiables: " + variables.size());
+            if (query.contains("?")) {
+                for (JEVisObject va : variables) {
+                    try {
+                        setVariable(ps, va, channel);
+                    } catch (Exception ex) {
+                        System.out.println("Error in variable: " + ex);
                     }
-                } catch (NumberFormatException nfe) {
-                    java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, nfe);
-                } catch (SQLException ex) {
-                    java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
                 }
             }
-            
-        } catch (JEVisException ex) {
-            java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (SQLException ex) {
+            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, "Query: " + ps);
+
+            //Send query to database
+            try {
+                ResultSet rs = ps.executeQuery();
+
+                for (JEVisObject dp : dataPoints) {
+                    try {
+                        while (rs.next()) {
+                            try {
+                                //Parse Result
+                                _result.add(parseResult(rs, dp));
+                            } catch (Exception ex) {
+                                System.out.println("Error while parsing sample: " + ex);
+                            }
+                        }
+                    } catch (NumberFormatException nfe) {
+                        java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, nfe);
+                    }
+                }
+            } catch (SQLException sqlError) {
+                System.out.println("Error while executing Query: " + sqlError);
+            }
+        } catch (JEVisException | SQLException ex) {
             java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
+        System.out.println("----------------------------------- Channnel end -----------------");
         return null;
     }
 
-    private void initializeAttributes(JEVisObject sqlObject) {
-        try {
-            JEVisClass sqlType = sqlObject.getDataSource().getJEVisClass(getClassName());
-            JEVisType host = sqlType.getType(SQL.HOST);
-            JEVisType port = sqlType.getType(SQL.PORT);
-            JEVisType schema = sqlType.getType(SQL.SCHEMA);
-            JEVisType domain = sqlType.getType(SQL.DOMAIN);
-            JEVisType user = sqlType.getType(SQL.USER);
-            JEVisType password = sqlType.getType(SQL.PASSWORD);
-            JEVisType connectionTimeout = sqlType.getType(SQL.CONNECTION_TIMEOUT);
-            JEVisType readTimeout = sqlType.getType(SQL.READ_TIMEOUT);
-            JEVisType timezoneType = sqlType.getType(SQL.TIMEZONE);
-            JEVisType enableType = sqlType.getType(SQL.ENABLE);
-
-            _id = sqlObject.getID();
-            _name = sqlObject.getName();
-            _host = DatabaseHelper.getObjectAsString(sqlObject, host);
-            _port = DatabaseHelper.getObjectAsInteger(sqlObject, port);
-            _schema = DatabaseHelper.getObjectAsString(sqlObject, schema);
-            JEVisAttribute domainAttr = sqlObject.getAttribute(domain);
-            if (!domainAttr.hasSample()) {
-                _domain = "";
-            } else {
-                _domain = (String) domainAttr.getLatestSample().getValue();
-            }
-            JEVisAttribute userAttr = sqlObject.getAttribute(user);
-            if (!userAttr.hasSample()) {
-                _dbUser = "";
-            } else {
-                _dbUser = (String) userAttr.getLatestSample().getValue();
-            }
-            JEVisAttribute passAttr = sqlObject.getAttribute(password);
-            if (!passAttr.hasSample()) {
-                _dbPW = "";
-            } else {
-                _dbPW = (String) passAttr.getLatestSample().getValue();
-            }
-            
-            _connectionTimeout = DatabaseHelper.getObjectAsInteger(sqlObject, connectionTimeout);
-            _readTimeout = DatabaseHelper.getObjectAsInteger(sqlObject, readTimeout);
-            _timezone = DatabaseHelper.getObjectAsString(sqlObject, timezoneType);
-            _enabled = DatabaseHelper.getObjectAsBoolean(sqlObject, enableType);
-        } catch (JEVisException ex) {
-            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.SEVERE, null, ex);
-        }
+    public void logError(SQLDriverError error, String text) {
+        java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName())
+                .log(java.util.logging.Level.SEVERE, error.getMessage() + " Error: " + text);
     }
 
-    private void initializeChannelObjects(JEVisObject sqlObject) {
-        try {
-            _channels = getChannels(sqlObject);
-            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, "Found Channels:");
-            for(JEVisObject channel : _channels) {
-                Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, channel.getName());
-            }
-        } catch (JEVisException ex) {
-            java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        }
-    }
-    private List<JEVisObject> getChannels(JEVisObject channelDirObject) throws JEVisException {
-        ArrayList<JEVisObject> channels = new ArrayList<>();
-        String msg = "ChannelDir: " + channelDirObject.getName();
+    /**
+     * Parse Result
+     *
+     * @param rs
+     * @param dp
+     * @return
+     * @throws Exception
+     */
+    private Result parseResult(ResultSet rs, JEVisObject dp) throws Exception {
+        JEVisClass dpClass = dp.getJEVisClass();
+        long targetID = dp.getAttribute(SQLDataPoint.TARGET).getLatestSample().getValueAsLong();
+        JEVisType targetAttributeType = dpClass.getType(SQLDataPoint.TARGETATTRIBUTE);
+        String targetAttribute = DatabaseHelper.getObjectAsString(dp, targetAttributeType);
+        JEVisType timestampColumnType = dpClass.getType(SQLDataPoint.TIMESTAMPCOLUMN);
+        String timestampColumn = DatabaseHelper.getObjectAsString(dp, timestampColumnType);
+        JEVisType valueColumnType = dpClass.getType(SQLDataPoint.VALUECOLUMN);
+        String valueColumn = DatabaseHelper.getObjectAsString(dp, valueColumnType);
+        JEVisType timestampTypeType = dpClass.getType(SQLDataPoint.TIMESTAMPTYPE);
+        String timestampType = DatabaseHelper.getObjectAsString(dp, timestampTypeType);
+        JEVisType valueTypeType = dpClass.getType(SQLDataPoint.VALUETYPE);
+        String valueType = DatabaseHelper.getObjectAsString(dp, valueTypeType);
+
+        String ts_str = rs.getString(timestampColumn);
+        String val_str = rs.getString(valueColumn);
+
+        String msg = String.format("SQL-Driver: SQL-COL: %s, %s", ts_str, val_str);
         Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
 
-        // Get Classes
-        JEVisClass channelDirClass = channelDirObject.getDataSource().getJEVisClass(SQLChannelDirectory.NAME);
-        JEVisClass channelClass = channelDirObject.getDataSource().getJEVisClass(SQLChannel.NAME);
-        
-        // Go deeper
-        List<JEVisObject> channelsDirs = channelDirObject.getChildren(channelDirClass, false);
-        for (JEVisObject cDir : channelsDirs) {
-            channels.addAll(getChannels(cDir));
+        if (valueType.equalsIgnoreCase("double")) {
+            double value = Double.parseDouble(val_str);
+            DateTime dateTime = DateTimeFormat.forPattern(timestampType).parseDateTime(ts_str);
+            String msgs = String.format("After Parser: %s, %s", dateTime, value);
+            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
+//        JEVisObject targetObject
+            Result result = new Result(targetID, targetAttribute, value, dateTime);
+            return result;
+        } else if (valueType.equalsIgnoreCase("float")) {
+            float value = Float.parseFloat(val_str);
+            DateTime dateTime = DateTimeFormat.forPattern(timestampType).parseDateTime(ts_str);
+            String msgs = String.format("After Parser: %s, %s", dateTime, value);
+            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
+//        JEVisObject targetObject
+            Result result = new Result(targetID, targetAttribute, value, dateTime);
+            return result;
+        } else if (valueType.equalsIgnoreCase("long")) {
+            long value = Long.parseLong(val_str);
+            DateTime dateTime = DateTimeFormat.forPattern(timestampType).parseDateTime(ts_str);
+            String msgs = String.format("After Parser: %s, %s", dateTime, value);
+            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
+//        JEVisObject targetObject
+            Result result = new Result(targetID, targetAttribute, value, dateTime);
+            return result;
+        } else if (valueType.equalsIgnoreCase("int")) {
+            int value = Integer.parseInt(val_str);
+            DateTime dateTime = DateTimeFormat.forPattern(timestampType).parseDateTime(ts_str);
+            String msgs = String.format("After Parser: %s, %s", dateTime, value);
+            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
+//        JEVisObject targetObject
+            Result result = new Result(targetID, targetAttribute, value, dateTime);
+            return result;
+        } else if (valueType.equalsIgnoreCase("string")) {
+            String value = val_str;
+            DateTime dateTime = DateTimeFormat.forPattern(timestampType).parseDateTime(ts_str);
+            String msgs = String.format("After Parser: %s, %s", dateTime, value);
+            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
+//        JEVisObject targetObject
+            Result result = new Result(targetID, targetAttribute, value, dateTime);
+            return result;
+        } else {
+            logError(SQLDriverErrors.ERROR_4048, "unknown value type: " + valueType);
+            String value = val_str;
+            DateTime dateTime = DateTimeFormat.forPattern(timestampType).parseDateTime(ts_str);
+            String msgs = String.format("After Parser: %s, %s", dateTime, value);
+            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
+//        JEVisObject targetObject
+            Result result = new Result(targetID, targetAttribute, value, dateTime);
+            return result;
         }
-        
-        // Add all channels
-        channels.addAll(channelDirObject.getChildren(channelClass, false));
-        
-        return channels;
     }
-    
-    private List<JEVisObject> getDataPoints(JEVisObject channelObject) throws JEVisException {
-        ArrayList<JEVisObject> dataPoints = new ArrayList<>();
-        
-        String msg = "DataPointDir: " + channelObject.getName();
-        Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
 
-        // Get Classes
-        JEVisClass dpDirClass = channelObject.getDataSource().getJEVisClass(SQLDataPointDirectory.NAME);
-        JEVisClass dpClass = channelObject.getDataSource().getJEVisClass(SQLDataPoint.NAME);
-        
-        // Go deeper
-        List<JEVisObject> dpDirs = channelObject.getChildren(dpDirClass, false);
-        for (JEVisObject dpDir : dpDirs) {
-            dataPoints.addAll(getDataPoints(dpDir));
+    private void setVariable(PreparedStatement ps, JEVisObject va, JEVisObject channel) throws Exception {
+        System.out.println("setVariable: " + va.getName());
+        JEVisClass channelClass = channel.getJEVisClass();
+        JEVisType last_readoutType = channelClass.getType(SQLChannel.LAST_READOUT);
+        String last_readout = DatabaseHelper.getObjectAsString(channel, last_readoutType);
+        String col_ts_format = "yyyy-MM-dd HH:mm:ss";
+        String sql_lastReadout;
+        DateTime lastReadout = null;
+        if (channel.getAttribute(last_readoutType).hasSample()) {
+            lastReadout = DatabaseHelper.getObjectAsDate(channel, last_readoutType,
+                    DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss"));
         }
-        
-        // Add all Data Points
-        dataPoints.addAll(channelObject.getChildren(dpClass, false));
-        
-        return dataPoints;
+        if (lastReadout == null || DatabaseHelper.getObjectAsString(channel, last_readoutType).isEmpty()) {
+            lastReadout = new DateTime(0);
+        }
+        DateTimeFormatter dbDateTimeFormatter = DateTimeFormat.forPattern(col_ts_format);
+        sql_lastReadout = lastReadout.toString(DateTimeFormat.forPattern(col_ts_format));
+        JEVisClass vaClass = va.getJEVisClass();
+        JEVisType artType = vaClass.getType(SQLVariable.VARIABLETYPE);
+        String art = DatabaseHelper.getObjectAsString(va, artType);
+        int pos = Math.toIntExact(va.getAttribute(SQLVariable.POSITION).getLatestSample().getValueAsLong());
+        System.out.println("Varibale: " + va.getName() + " Pos: " + pos);
+        JEVisType conditionType = vaClass.getType(SQLVariable.CONDITION);
+        String condition = DatabaseHelper.getObjectAsString(va, conditionType);
+        if (condition.equalsIgnoreCase("lastreadout")) {
+            sql_lastReadout = lastReadout.toString(DateTimeFormat.forPattern(col_ts_format));
+            condition = condition.replaceAll(condition, sql_lastReadout);
+        }
+        if (!va.getAttribute(SQLVariable.CONDITION).hasSample()) {
+            condition = sql_lastReadout;
+        }
+        parseVariableFormat(ps, art, pos, condition, channel);
     }
 
+    private void parseVariableFormat(PreparedStatement ps, String art, int pos, String condition, JEVisObject channel) throws Exception {
+        if (art.equalsIgnoreCase("double")) {
+            System.out.println("---> set double: " + pos + "  " + Double.parseDouble(condition));
+            ps.setDouble(pos, Double.parseDouble(condition));
+        } else if (art.equalsIgnoreCase("float")) {
+            System.out.println("---> set float: " + pos + "  " + Float.parseFloat(condition));
+            ps.setFloat(pos, Float.parseFloat(condition));
+        } else if (art.equalsIgnoreCase("long")) {
+            System.out.println("---> set long: " + pos + "  " + Long.parseLong(condition));
+            ps.setLong(pos, Long.parseLong(condition));
+        } else if (art.equalsIgnoreCase("int")) {
+            System.out.println("---> set int: " + pos + "  " + Integer.parseInt(condition));
+            ps.setInt(pos, Integer.parseInt(condition));
+        } else if (art.equalsIgnoreCase("date")) {
+            System.out.println("---> set date: " + pos + "  " + Date.valueOf(condition));
+            ps.setDate(pos, Date.valueOf(condition));
+        } else if (art.equalsIgnoreCase("time")) {
+            System.out.println("---> set time: " + pos + "  " + Time.valueOf(condition));
+            ps.setTime(pos, Time.valueOf(condition));
+        } else if (art.equalsIgnoreCase("timestamp")) {
+            System.out.println("---> settimestamp: " + pos + "  " + condition);
+            DateTimeFormatter dbDateTime = DateTimeFormat.forPattern("yyyy-MM-dd hh:mm:ss");
+            ps.setTimestamp(pos, new Timestamp(dbDateTime.parseMillis(condition)));
+        } else if (art.equalsIgnoreCase("string")) {
+            System.out.println("---> setString: " + pos + "  " + condition);
+            ps.setString(pos, condition);
+        } else {
+            logError(SQLDriverErrors.ERROR_4048, "unknown varibale type: " + art);
+        }
+    }
 }
