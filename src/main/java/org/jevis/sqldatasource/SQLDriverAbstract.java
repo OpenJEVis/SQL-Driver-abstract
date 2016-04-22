@@ -115,12 +115,12 @@ public abstract class SQLDriverAbstract implements DataSource {
         public final static String VALUECOLUMN = "Value Column";
     }
 
-    interface SQLVariableDirectory extends DataCollectorTypes.SQLVariableDirectory {
+    interface SQLVariableDirectory {
 
         public final static String NAME = "SQL Variable Directory";
     }
 
-    interface SQLVariable extends DataCollectorTypes.SQLVariable {
+    interface SQLVariable {
 
         public final static String NAME = "SQL Variable";
         public final static String VARIABLETYPE = "Variable Type";
