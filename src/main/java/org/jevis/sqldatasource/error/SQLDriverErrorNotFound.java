@@ -24,29 +24,14 @@ package org.jevis.sqldatasource.error;
  *
  * @author Jingxuan Man
  */
-public class SQLDriverError {
+public interface SQLDriverErrorNotFound {
 
-    private int status;
-    private String message;
-
-    SQLDriverError(int status, String message) {
-        this.status = status;
-        this.message = message;
-    }
-
-    public int getStatus() {
-        return status;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setStatus(int code) {
-        this.status = code;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
+    public static final SQLDriverError ERROR_404 = new SQLDriverError(404, "Not Found!");
+    public static final SQLDriverError ERROR_4040 = new SQLDriverError(4040, "SQL Server Not Found!");
+    public static final SQLDriverError ERROR_4041 = new SQLDriverError(4041, "SQL Channel Directory Not Found!");
+    public static final SQLDriverError ERROR_4042 = new SQLDriverError(4042, "SQL Channel Not Found!");
+    public static final SQLDriverError ERROR_4043 = new SQLDriverError(4043, "SQL Variable Directory Not Found!");
+    public static final SQLDriverError ERROR_4044 = new SQLDriverError(4044, "SQL Variable Not Found!");
+    public static final SQLDriverError ERROR_4045 = new SQLDriverError(4045, "SQL Data Point Directory Not Found!");
+    public static final SQLDriverError ERROR_4046 = new SQLDriverError(4046, "SQL Data Point Not Found!");
 }

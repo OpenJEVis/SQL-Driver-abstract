@@ -24,29 +24,15 @@ package org.jevis.sqldatasource.error;
  *
  * @author Jingxuan Man
  */
-public class SQLDriverError {
+public interface SQLDriverErrorBadRequest {
 
-    private int status;
-    private String message;
+    public static final SQLDriverError ERROR_400 = new SQLDriverError(400, "Bad Request!");
+    public static final SQLDriverError ERROR_4001 = new SQLDriverError(4001, "Bad Request of Connecting Server!");
+    public static final SQLDriverError ERROR_4002 = new SQLDriverError(4002, "Bad Request of Getting Query!");
+    public static final SQLDriverError ERROR_4003 = new SQLDriverError(4003, "Bad Request of Importing Data!");
+    public static final SQLDriverError ERROR_4004 = new SQLDriverError(4004, "Bad Request of URL!");
+    public static final SQLDriverError ERROR_4005 = new SQLDriverError(4005, "Bad Request of User or Password!");
+    public static final SQLDriverError ERROR_4006 = new SQLDriverError(4006, "Bad Request of Setting Variable!");
+    public static final SQLDriverError ERROR_4007 = new SQLDriverError(4007, "Bad Request of Parsing Result!");
 
-    SQLDriverError(int status, String message) {
-        this.status = status;
-        this.message = message;
-    }
-
-    public int getStatus() {
-        return status;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setStatus(int code) {
-        this.status = code;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
 }

@@ -42,7 +42,7 @@ import org.jevis.commons.driver.Importer;
 import org.jevis.commons.driver.ImporterFactory;
 import org.jevis.commons.driver.Result;
 import org.jevis.sqldatasource.error.SQLDriverError;
-import org.jevis.sqldatasource.error.SQLDriverErrors;
+import org.jevis.sqldatasource.error.SQLDriverErrorNotFound;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
@@ -168,85 +168,74 @@ public abstract class SQLDriverAbstract implements DataSource {
     private void initializeChannelObjects(JEVisObject sqlObject) {
         try {
             _channels = getChannels(sqlObject);
-            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, "Found Channels:");
+            Logger.getLogger(
+                      SQLDriverAbstract.class.getName()).log(Level.INFO, "Found Channels:");
             for (JEVisObject channel : _channels) {
-                Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, channel.getName());
+                Logger.getLogger(
+                          SQLDriverAbstract.class.getName()).log(Level.INFO, channel.getName());
             }
         } catch (JEVisException ex) {
-            java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(
+                      SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
     }
 
-    private List<JEVisObject> getChannels(JEVisObject channelDirObject) throws JEVisException {
+    private List<JEVisObject> getChannels(JEVisObject channelDir) throws JEVisException {
         ArrayList<JEVisObject> channels = new ArrayList<>();
-        String msg = "ChannelDir: " + channelDirObject.getName();
+        String msg = "ChannelDir: " + channelDir.getName();
         Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
-        JEVisClass channelDirClass = channelDirObject.getDataSource().getJEVisClass(SQLChannelDirectory.NAME);
-        JEVisClass channelClass = channelDirObject.getDataSource().getJEVisClass(SQLChannel.NAME);
-        List<JEVisObject> channelsDirs = channelDirObject.getChildren(channelDirClass, false);
-        for (JEVisObject cDir : channelsDirs) {
-            channels.addAll(getChannels(cDir));
+        JEVisClass channelDirClass
+                  = channelDir.getDataSource().getJEVisClass(SQLChannelDirectory.NAME);
+        JEVisClass channel
+                  = channelDir.getDataSource().getJEVisClass(SQLChannel.NAME);
+        List<JEVisObject> channelsDirs = channelDir.getChildren(channelDirClass, false);
+        for (JEVisObject channelDirectory : channelsDirs) {
+            channels.addAll(getChannels(channelDirectory));
         }
-        channels.addAll(channelDirObject.getChildren(channelClass, false));
+        channels.addAll(channelDir.getChildren(channel, false));
         return channels;
     }
 
-    private List<JEVisObject> getDataPoints(JEVisObject channelObject) throws JEVisException {
-        ArrayList<JEVisObject> dataPoints = new ArrayList<>();
-        String msg = "DataPointDir: " + channelObject.getName();
-        Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
-        JEVisClass dpDirClass = channelObject.getDataSource().getJEVisClass(SQLDataPointDirectory.NAME);
-        JEVisClass dpClass = channelObject.getDataSource().getJEVisClass(SQLDataPoint.NAME);
-        List<JEVisObject> dpDirs = channelObject.getChildren(dpDirClass, false);
-        for (JEVisObject dpDir : dpDirs) {
-            dataPoints.addAll(getDataPoints(dpDir));
-        }
-        dataPoints.addAll(channelObject.getChildren(dpClass, false));
-        return dataPoints;
-    }
-
-    private List<JEVisObject> getVariables(JEVisObject channelObject) throws JEVisException {
+    private List<JEVisObject> getVariables(JEVisObject variableDir) throws JEVisException {
         ArrayList<JEVisObject> variables = new ArrayList<>();
-        String msg = "VariableDir: " + channelObject.getName();
+        String msg = "VariableDir: " + variableDir.getName();
         Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
-        JEVisClass vaDirClass = channelObject.getDataSource().getJEVisClass(SQLVariableDirectory.NAME);
-        JEVisClass valass = channelObject.getDataSource().getJEVisClass(SQLVariable.NAME);
-        List<JEVisObject> vaDirs = channelObject.getChildren(vaDirClass, false);
-        for (JEVisObject vaDir : vaDirs) {
-            variables.addAll(getVariables(vaDir));
+        JEVisClass variableDirClass
+                  = variableDir.getDataSource().getJEVisClass(SQLVariableDirectory.NAME);
+        JEVisClass variable
+                  = variableDir.getDataSource().getJEVisClass(SQLVariable.NAME);
+        List<JEVisObject> variableDirs = variableDir.getChildren(variableDirClass, false);
+        for (JEVisObject variableDirectory : variableDirs) {
+            variables.addAll(getVariables(variableDirectory));
         }
-        variables.addAll(channelObject.getChildren(valass, false));
+        variables.addAll(variableDir.getChildren(variable, false));
         return variables;
     }
 
-    @Override
-    public void parse(List<InputStream> input) {
+    private List<JEVisObject> getDataPoints(JEVisObject dataPointDir) throws JEVisException {
+        ArrayList<JEVisObject> dataPoints = new ArrayList<>();
+        String msg = "DataPointDir: " + dataPointDir.getName();
+        Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
+        JEVisClass dataPointDirClass
+                  = dataPointDir.getDataSource().getJEVisClass(SQLDataPointDirectory.NAME);
+        JEVisClass dataPoint
+                  = dataPointDir.getDataSource().getJEVisClass(SQLDataPoint.NAME);
+        List<JEVisObject> dataPointDirs = dataPointDir.getChildren(dataPointDirClass, false);
+        for (JEVisObject dataPointDirectory : dataPointDirs) {
+            dataPoints.addAll(getDataPoints(dataPointDirectory));
+        }
+        dataPoints.addAll(dataPointDir.getChildren(dataPoint, false));
+        return dataPoints;
     }
 
 //    abstract protected String loadJDBC(String host, int port, String schema, String dbUser, String dbPW) throws ClassNotFoundException, SQLException;
-    abstract protected String loadJDBC(String host, int port, String schema, String dbUser, String dbPW, String domain) throws ClassNotFoundException, SQLException;
+    abstract protected String loadJDBC(String host, int port, String schema, String dbUser, String dbPW, String domain)
+              throws ClassNotFoundException, SQLException;
 
     abstract protected String getClassName();
 
     @Override
-    public void run() {
-        try {
-            String url = loadJDBC(_host, _port, _schema, _dbUser, _dbPW, _domain);
-        } catch (ClassNotFoundException | SQLException ex) {
-            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.SEVERE, null, ex);
-            return;
-        }
-        for (JEVisObject channel : _channels) {
-            try {
-                _result = new ArrayList<Result>();
-                this.sendSampleRequest(channel);
-                if (!_result.isEmpty()) {
-                    this.importResult();
-                }
-            } catch (Exception ex) {
-                Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
+    public void parse(List<InputStream> input) {
     }
 
     @Override
@@ -266,53 +255,52 @@ public abstract class SQLDriverAbstract implements DataSource {
     }
 
     @Override
+    public void run() {
+        try {
+            String url = loadJDBC(_host, _port, _schema, _dbUser, _dbPW, _domain);
+        } catch (ClassNotFoundException | SQLException ex) {
+            Logger.getLogger(
+                      SQLDriverAbstract.class.getName()).log(Level.SEVERE, null, ex);
+            return;
+        }
+        for (JEVisObject channel : _channels) {
+            try {
+                _result = new ArrayList<Result>();
+                this.sendSampleRequest(channel);
+                if (!_result.isEmpty()) {
+                    this.importResult();
+                }
+            } catch (Exception ex) {
+                Logger.getLogger(
+                          SQLDriverAbstract.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+
+    @Override
     public List<InputStream> sendSampleRequest(JEVisObject channel) {
         try {
-//            //Debug workaround, remove
-//            if (channel.getID() != 4607) {
-//                return null;
-//            }
-            System.out.println("----------------------------------- Channnel: " + channel.getName() + " -----------------");
             JEVisClass channelClass = channel.getJEVisClass();
             JEVisType last_readoutType = channelClass.getType(SQLChannel.LAST_READOUT);
             JEVisType queryType = channelClass.getType(SQLChannel.QUERY);
             String last_readout = DatabaseHelper.getObjectAsString(channel, last_readoutType);
             String query = DatabaseHelper.getObjectAsString(channel, queryType);
-
             List<JEVisObject> variables;
-            try {
-                variables = getVariables(channel);
-                Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO,
-                        "Found Variables:");
-                for (JEVisObject va : variables) {
-                    Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO,
-                            va.getName());
-                }
-            } catch (JEVisException ex) {
-                Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.SEVERE, null, ex);
-                return null;
-            }
-
+            variables = getVariables(channel);
+            Logger.getLogger(
+                      SQLDriverAbstract.class.getName()).log(Level.INFO, "Found Variables:");
             List<JEVisObject> dataPoints;
-            try {
-                dataPoints = getDataPoints(channel);
-                Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO,
-                        "Found DataPoints:");
-                for (JEVisObject dp : dataPoints) {
-                    Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO,
-                            dp.getName());
-                }
-            } catch (JEVisException ex) {
-                Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.SEVERE, null, ex);
-                return null;
+            dataPoints = getDataPoints(channel);
+            Logger.getLogger(
+                      SQLDriverAbstract.class.getName()).log(Level.INFO, "Found DataPoints:");
+            for (JEVisObject dp : dataPoints) {
+                Logger.getLogger(
+                          SQLDriverAbstract.class.getName()).log(Level.INFO, dp.getName());
             }
-
-            String msg = "SQL-Driver: Prepared querry: " + query;
+            String msg = "Prepared query: " + "\n" + query;
             Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
             PreparedStatement ps = _con.prepareStatement(query);
 
-            //Set Valiables in query
-            System.out.println("Valiables: " + variables.size());
             if (query.contains("?")) {
                 for (JEVisObject va : variables) {
                     try {
@@ -322,39 +310,34 @@ public abstract class SQLDriverAbstract implements DataSource {
                     }
                 }
             }
-            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, "Query: " + ps);
+            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, "Query: " + "\n" + "SELECT Messzeit, Verbrauch FROM Energiedaten WHERE Messzeit > '2016-04-10 08:00:00'" + "\n" + "AND Verbrauch = 21;");
+//            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, "Query: " + "\n" + "SELECT * FROM sample WHERE timestamp>'2016-04-27 11:00:00' AND value =24.45745;");
 
-            //Send query to database
+//            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, "Query: " + "\n" + ps);
             try {
                 ResultSet rs = ps.executeQuery();
-
                 for (JEVisObject dp : dataPoints) {
-                    try {
-                        while (rs.next()) {
-                            try {
-                                //Parse Result
-                                _result.add(parseResult(rs, dp));
-                            } catch (Exception ex) {
-                                System.out.println("Error while parsing sample: " + ex);
-                            }
+                    while (rs.next()) {
+                        try {
+                            _result.add(parseResult(rs, dp));
+                        } catch (Exception ex) {
+                            System.out.println("Error while parsing sample: " + ex);
                         }
-                    } catch (NumberFormatException nfe) {
-                        java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, nfe);
                     }
                 }
             } catch (SQLException sqlError) {
                 System.out.println("Error while executing Query: " + sqlError);
             }
         } catch (JEVisException | SQLException ex) {
-            java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(
+                      java.util.logging.Level.SEVERE, null, ex);
         }
-        System.out.println("----------------------------------- Channnel end -----------------");
         return null;
     }
 
     public void logError(SQLDriverError error, String text) {
-        java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName())
-                .log(java.util.logging.Level.SEVERE, error.getMessage() + " Error: " + text);
+        java.util.logging.Logger.getLogger(SQLDriverAbstract.class.getName()).log(
+                  java.util.logging.Level.SEVERE, "{0} Error: {1}", new Object[]{error.getMessage(), text});
     }
 
     /**
@@ -381,56 +364,57 @@ public abstract class SQLDriverAbstract implements DataSource {
 
         String ts_str = rs.getString(timestampColumn);
         String val_str = rs.getString(valueColumn);
-
+//        System.out.println("----------------------------------- Query----------------------------------- ");
         String msg = String.format("SQL-Driver: SQL-COL: %s, %s", ts_str, val_str);
         Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msg);
+//        System.out.println("----------------------------------- Results----------------------------------- ");
 
         if (valueType.equalsIgnoreCase("double")) {
             double value = Double.parseDouble(val_str);
             DateTime dateTime = DateTimeFormat.forPattern(timestampType).parseDateTime(ts_str);
-            String msgs = String.format("After Parser: %s, %s", dateTime, value);
-            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
+//            String msgs = String.format("After Parser: %s, %s", dateTime, value);
+//            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
 //        JEVisObject targetObject
             Result result = new Result(targetID, targetAttribute, value, dateTime);
             return result;
         } else if (valueType.equalsIgnoreCase("float")) {
             float value = Float.parseFloat(val_str);
             DateTime dateTime = DateTimeFormat.forPattern(timestampType).parseDateTime(ts_str);
-            String msgs = String.format("After Parser: %s, %s", dateTime, value);
-            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
+//            String msgs = String.format("After Parser: %s, %s", dateTime, value);
+//            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
 //        JEVisObject targetObject
             Result result = new Result(targetID, targetAttribute, value, dateTime);
             return result;
         } else if (valueType.equalsIgnoreCase("long")) {
             long value = Long.parseLong(val_str);
             DateTime dateTime = DateTimeFormat.forPattern(timestampType).parseDateTime(ts_str);
-            String msgs = String.format("After Parser: %s, %s", dateTime, value);
-            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
+//            String msgs = String.format("After Parser: %s, %s", dateTime, value);
+//            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
 //        JEVisObject targetObject
             Result result = new Result(targetID, targetAttribute, value, dateTime);
             return result;
         } else if (valueType.equalsIgnoreCase("int")) {
             int value = Integer.parseInt(val_str);
             DateTime dateTime = DateTimeFormat.forPattern(timestampType).parseDateTime(ts_str);
-            String msgs = String.format("After Parser: %s, %s", dateTime, value);
-            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
+//            String msgs = String.format("After Parser: %s, %s", dateTime, value);
+//            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
 //        JEVisObject targetObject
             Result result = new Result(targetID, targetAttribute, value, dateTime);
             return result;
         } else if (valueType.equalsIgnoreCase("string")) {
             String value = val_str;
             DateTime dateTime = DateTimeFormat.forPattern(timestampType).parseDateTime(ts_str);
-            String msgs = String.format("After Parser: %s, %s", dateTime, value);
-            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
+//            String msgs = String.format("After Parser: %s, %s", dateTime, value);
+//            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
 //        JEVisObject targetObject
             Result result = new Result(targetID, targetAttribute, value, dateTime);
             return result;
         } else {
-            logError(SQLDriverErrors.ERROR_4048, "unknown value type: " + valueType);
+            logError(SQLDriverErrorNotFound.ERROR_404, "unknown value type: " + valueType);
             String value = val_str;
             DateTime dateTime = DateTimeFormat.forPattern(timestampType).parseDateTime(ts_str);
-            String msgs = String.format("After Parser: %s, %s", dateTime, value);
-            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
+//            String msgs = String.format("After Parser: %s, %s", dateTime, value);
+//            Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.INFO, msgs);
 //        JEVisObject targetObject
             Result result = new Result(targetID, targetAttribute, value, dateTime);
             return result;
@@ -438,67 +422,65 @@ public abstract class SQLDriverAbstract implements DataSource {
     }
 
     private void setVariable(PreparedStatement ps, JEVisObject va, JEVisObject channel) throws Exception {
-        System.out.println("setVariable: " + va.getName());
         JEVisClass channelClass = channel.getJEVisClass();
         JEVisType last_readoutType = channelClass.getType(SQLChannel.LAST_READOUT);
         String last_readout = DatabaseHelper.getObjectAsString(channel, last_readoutType);
         String col_ts_format = "yyyy-MM-dd HH:mm:ss";
-        String sql_lastReadout;
         DateTime lastReadout = null;
         if (channel.getAttribute(last_readoutType).hasSample()) {
             lastReadout = DatabaseHelper.getObjectAsDate(channel, last_readoutType,
-                    DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss"));
+                      DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss"));
         }
         if (lastReadout == null || DatabaseHelper.getObjectAsString(channel, last_readoutType).isEmpty()) {
             lastReadout = new DateTime(0);
         }
         DateTimeFormatter dbDateTimeFormatter = DateTimeFormat.forPattern(col_ts_format);
-        sql_lastReadout = lastReadout.toString(DateTimeFormat.forPattern(col_ts_format));
+        last_readout = lastReadout.toString(DateTimeFormat.forPattern(col_ts_format));
         JEVisClass vaClass = va.getJEVisClass();
         JEVisType artType = vaClass.getType(SQLVariable.VARIABLETYPE);
         String art = DatabaseHelper.getObjectAsString(va, artType);
         int pos = Math.toIntExact(va.getAttribute(SQLVariable.POSITION).getLatestSample().getValueAsLong());
-        System.out.println("Varibale: " + va.getName() + " Pos: " + pos);
         JEVisType conditionType = vaClass.getType(SQLVariable.CONDITION);
         String condition = DatabaseHelper.getObjectAsString(va, conditionType);
         if (condition.equalsIgnoreCase("lastreadout")) {
-            sql_lastReadout = lastReadout.toString(DateTimeFormat.forPattern(col_ts_format));
-            condition = condition.replaceAll(condition, sql_lastReadout);
+            last_readout = lastReadout.toString(DateTimeFormat.forPattern(col_ts_format));
+            condition = condition.replaceAll(condition, last_readout);
         }
         if (!va.getAttribute(SQLVariable.CONDITION).hasSample()) {
-            condition = sql_lastReadout;
+            condition = last_readout;
         }
         parseVariableFormat(ps, art, pos, condition, channel);
     }
 
     private void parseVariableFormat(PreparedStatement ps, String art, int pos, String condition, JEVisObject channel) throws Exception {
         if (art.equalsIgnoreCase("double")) {
-            System.out.println("---> set double: " + pos + "  " + Double.parseDouble(condition));
+            System.out.println("---> Set variable in type: " + art + "; Position: " + pos + "; Condition: " + Double.parseDouble(condition));
             ps.setDouble(pos, Double.parseDouble(condition));
         } else if (art.equalsIgnoreCase("float")) {
-            System.out.println("---> set float: " + pos + "  " + Float.parseFloat(condition));
+            System.out.println("---> Set variable in type: " + art + "; Position: " + pos + "; Condition: " + Float.parseFloat(condition));
             ps.setFloat(pos, Float.parseFloat(condition));
         } else if (art.equalsIgnoreCase("long")) {
-            System.out.println("---> set long: " + pos + "  " + Long.parseLong(condition));
+            System.out.println("---> Set variable in type: " + art + "; Position: " + pos + "; Condition: " + Long.parseLong(condition));
             ps.setLong(pos, Long.parseLong(condition));
         } else if (art.equalsIgnoreCase("int")) {
-            System.out.println("---> set int: " + pos + "  " + Integer.parseInt(condition));
+            System.out.println("---> Set variable in type: " + art + "; Position: " + pos + "; Condition: " + Integer.parseInt(condition));
             ps.setInt(pos, Integer.parseInt(condition));
         } else if (art.equalsIgnoreCase("date")) {
-            System.out.println("---> set date: " + pos + "  " + Date.valueOf(condition));
+            System.out.println("---> Set variable in type: " + art + "; Position: " + pos + "; Condition: " + Date.valueOf(condition));
             ps.setDate(pos, Date.valueOf(condition));
         } else if (art.equalsIgnoreCase("time")) {
-            System.out.println("---> set time: " + pos + "  " + Time.valueOf(condition));
+            System.out.println("---> Set variable in type: " + art + "; Position: " + pos + "; Condition: " + Time.valueOf(condition));
             ps.setTime(pos, Time.valueOf(condition));
         } else if (art.equalsIgnoreCase("timestamp")) {
-            System.out.println("---> settimestamp: " + pos + "  " + condition);
+            System.out.println("---> Set variable in type: " + art + "; Position: " + pos + "; Condition: " + condition);
             DateTimeFormatter dbDateTime = DateTimeFormat.forPattern("yyyy-MM-dd hh:mm:ss");
             ps.setTimestamp(pos, new Timestamp(dbDateTime.parseMillis(condition)));
         } else if (art.equalsIgnoreCase("string")) {
-            System.out.println("---> setString: " + pos + "  " + condition);
+            System.out.println("---> Set variable in type: " + art + "Position: " + pos + "  " + condition);
             ps.setString(pos, condition);
         } else {
-            logError(SQLDriverErrors.ERROR_4048, "unknown varibale type: " + art);
+            logError(SQLDriverErrorNotFound.ERROR_404, "unknown varibale type: " + art);
         }
     }
+
 }
