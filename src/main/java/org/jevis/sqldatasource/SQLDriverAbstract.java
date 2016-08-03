@@ -436,7 +436,6 @@ public abstract class SQLDriverAbstract implements DataSource {
     }
 
     private void setVariable(PreparedStatement ps, JEVisObject va, JEVisObject channel) throws Exception {
-        System.out.println("---------- SetVariable");
         JEVisClass channelClass = channel.getJEVisClass();
         String col_ts_format = "yyyy-MM-dd HH:mm:ss";
 
@@ -461,7 +460,6 @@ public abstract class SQLDriverAbstract implements DataSource {
             if (lastReadout == null || DatabaseHelper.getObjectAsString(channel, last_readoutType).isEmpty()) {
                 lastReadout = new DateTime(0);
             }
-            System.out.println("-------- Last Readout: " + lastReadout);
             last_readout = lastReadout.toString(DateTimeFormat.forPattern(col_ts_format));
             condition = condition.replaceAll(condition, last_readout);
 
