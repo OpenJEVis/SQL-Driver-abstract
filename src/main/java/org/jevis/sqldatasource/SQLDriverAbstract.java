@@ -302,9 +302,15 @@ public abstract class SQLDriverAbstract implements DataSource {
                     logMessage(Level.INFO, "Nothing to import");
                 }
             } catch (Exception ex) {
-                Logger.getLogger(
-                        SQLDriverAbstract.class.getName()).log(Level.SEVERE, null, ex);
+                logErrorMessage(Level.SEVERE, ex, "Error in channel: " + channel.getID() + " " + channel.getName());
             }
+        }
+        try {
+            if (_con != null) {
+                _con.close();
+            }
+        } catch (Exception ex) {
+            logMessage(Level.INFO, "Error while closing DB connection");
         }
     }
 
@@ -340,11 +346,20 @@ public abstract class SQLDriverAbstract implements DataSource {
 
                 logMessage(Level.INFO, "Query: %s", ps);
 
-                ResultSet rs = ps.executeQuery();
+                List<Target> targets = new ArrayList<>();
                 for (JEVisObject dp : dataPoints) {
-                    while (rs.next()) {
+                    try {
+                        targets.add(new Target(dp));
+                    } catch (Exception ex) {
+                        logErrorMessage(Level.SEVERE, ex, "Error while reading taget configuration: " + ex);
+                    }
+                }
+
+                ResultSet rs = ps.executeQuery();
+                while (rs.next()) {
+                    for (Target target : targets) {
                         try {
-                            Result result = parseResult(rs, dp);
+                            Result result = parseResult(rs, target);
                             logMessage(Level.FINE, "After Parser: %s, %s", result.getDate(), result.getValue());
                             _result.add(result);
                         } catch (Exception ex) {
@@ -352,6 +367,7 @@ public abstract class SQLDriverAbstract implements DataSource {
                         }
                     }
                 }
+
             } catch (SQLException sqlError) {
                 logErrorMessage(Level.SEVERE, sqlError, "Error while executing query");
             } finally {
@@ -404,62 +420,42 @@ public abstract class SQLDriverAbstract implements DataSource {
         }
     }
 
-    /**
-     * Parse Result
-     *
-     * @param rs
-     * @param dp
-     * @return
-     * @throws Exception
-     */
-    private Result parseResult(ResultSet rs, JEVisObject dp) throws Exception {
-        JEVisClass dpClass = dp.getJEVisClass();
-        long targetID = dp.getAttribute(SQLDataPoint.TARGET).getLatestSample().getValueAsLong();
-        JEVisType targetAttributeType = dpClass.getType(SQLDataPoint.TARGETATTRIBUTE);
-        String targetAttribute = DatabaseHelper.getObjectAsString(dp, targetAttributeType);
-        JEVisType timestampColumnType = dpClass.getType(SQLDataPoint.TIMESTAMPCOLUMN);
-        String timestampColumn = DatabaseHelper.getObjectAsString(dp, timestampColumnType);
-        JEVisType valueColumnType = dpClass.getType(SQLDataPoint.VALUECOLUMN);
-        String valueColumn = DatabaseHelper.getObjectAsString(dp, valueColumnType);
-        JEVisType timestampTypeType = dpClass.getType(SQLDataPoint.TIMESTAMPTYPE);
-        String timestampType = DatabaseHelper.getObjectAsString(dp, timestampTypeType);
-        JEVisType valueTypeType = dpClass.getType(SQLDataPoint.VALUETYPE);
-        String valueType = DatabaseHelper.getObjectAsString(dp, valueTypeType);
+    private Result parseResult(ResultSet rs, Target target) throws Exception {
 
 //        Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.FINE, "TS-type:'" + timestampType + "' TS Colum: '" + timestampColumn + "' V-colum: '" + valueColumn + "'");
 //        Logger.getLogger(SQLDriverAbstract.class.getName()).log(Level.FINE, "Value: '" + rs.getString(valueColumn) + "' TS: '" + rs.getString(timestampColumn) + "'");
         DateTime dateTime = null;
 
-        if (timestampType.equalsIgnoreCase("date")) {
-            dateTime = new DateTime(rs.getDate(timestampColumn).getTime());
-        } else if (timestampType.equalsIgnoreCase("timestamp")) {
-            dateTime = new DateTime(rs.getTimestamp(timestampColumn).getTime());
+        if (target.getTimestampType().equalsIgnoreCase("date")) {
+            dateTime = new DateTime(rs.getDate(target.getTimestampColumn()).getTime());
+        } else if (target.getTimestampType().equalsIgnoreCase("timestamp")) {
+            dateTime = new DateTime(rs.getTimestamp(target.getTimestampColumn()).getTime());
         } else {
-            dateTime = DateTimeFormat.forPattern(timestampType).parseDateTime(rs.getString(timestampColumn));
+            dateTime = DateTimeFormat.forPattern(target.getTimestampType()).parseDateTime(rs.getString(target.getTimestampColumn()));
         }
 
-        if (valueType.equalsIgnoreCase("double")) {
-            Double value = rs.getDouble(valueColumn);
-            Result result = new Result(targetID, targetAttribute, value, dateTime);
+        if (target.getValueType().equalsIgnoreCase("double")) {
+            Double value = rs.getDouble(target.getValueColumn());
+            Result result = new Result(target.getObjectID(), target.getAttributeName(), value, dateTime);
             return result;
-        } else if (valueType.equalsIgnoreCase("float")) {
-            Float value = rs.getFloat(valueColumn);
-            Result result = new Result(targetID, targetAttribute, value, dateTime);
+        } else if (target.getValueType().equalsIgnoreCase("float")) {
+            Float value = rs.getFloat(target.getValueColumn());
+            Result result = new Result(target.getObjectID(), target.getAttributeName(), value, dateTime);
             return result;
-        } else if (valueType.equalsIgnoreCase("long")) {
-            Long value = rs.getLong(valueColumn);
-            Result result = new Result(targetID, targetAttribute, value, dateTime);
+        } else if (target.getValueType().equalsIgnoreCase("long")) {
+            Long value = rs.getLong(target.getValueColumn());
+            Result result = new Result(target.getObjectID(), target.getAttributeName(), value, dateTime);
             return result;
-        } else if (valueType.equalsIgnoreCase("int")) {
-            int value = rs.getInt(valueColumn);
-            Result result = new Result(targetID, targetAttribute, value, dateTime);
+        } else if (target.getValueType().equalsIgnoreCase("int")) {
+            int value = rs.getInt(target.getValueColumn());
+            Result result = new Result(target.getObjectID(), target.getAttributeName(), value, dateTime);
             return result;
-        } else if (valueType.equalsIgnoreCase("string")) {
-            String value = rs.getString(valueColumn);
-            Result result = new Result(targetID, targetAttribute, value, dateTime);
+        } else if (target.getValueType().equalsIgnoreCase("string")) {
+            String value = rs.getString(target.getValueColumn());
+            Result result = new Result(target.getObjectID(), target.getAttributeName(), value, dateTime);
             return result;
         } else {
-            logError(SQLDriverErrorNotFound.ERROR_404, "unknown value type: " + valueType);
+            logError(SQLDriverErrorNotFound.ERROR_404, "unknown value type: " + target.getValueType());
             throw new RuntimeException("Unknow value type");
         }
     }
